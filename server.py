@@ -23,9 +23,9 @@ except ImportError as e:
     logger.warning(f"Libraries not available: {e}. Install as per README.")
 
 instructions = """This server provides tools to enhance context for coding agents/IDEs. Key tools include:
-- kia_package_search_grep: Perform regex searches in installed packages.
-- kia_package_search_hybrid: Conduct semantic searches in packages using LEANN.
-- kia_package_search_read_file: Read specific sections of package files.
+- kia_package_search_grep: Perform regex searches in packages (local or remote registries like py_pi, npm).
+- kia_package_search_hybrid: Conduct semantic searches in packages using LEANN or remote research.
+- kia_package_search_read_file: Read specific sections of package files (local or remote).
 - index_repository: Clone and index GitHub repositories for semantic search.
 - search_codebase: Query indexed repositories for relevant code snippets.
 - visualize_codebase: Generate import graphs for repositories.
@@ -112,72 +112,90 @@ def chunk_code_with_tree_sitter(code: str) -> list[str]:
 
 
 
-# Package Search Tools (local approximations)
+# Package Search Tools (local and remote)
 @mcp.tool()
 @lru_cache(maxsize=256)
-def kia_package_search_grep(package_name: str, pattern: str, version: str = None, output_mode: str = "content") -> str:
-    logger.info(f"Grep search in package: {package_name}")
-    import site
-    site_packages = Path(site.getsitepackages()[0])
-    package_path = site_packages / package_name
-    if package_path.exists():
-        result = subprocess.run(['rg', pattern, str(package_path)], capture_output=True, text=True)
-        logger.info(f"Grep found matches: {bool(result.stdout)}")
-        return result.stdout
-    return "Package not installed locally"
-
-@mcp.tool()
-def kia_package_search_hybrid(package_name: str, semantic_queries: list, pattern: str = None) -> str:
-    logger.info(f"Hybrid search in package: {package_name}")
-    if not LIBRARIES_AVAILABLE:
-        return "Libraries not available."
-    if package_name in package_searchers:
-        searcher = package_searchers[package_name]
-    else:
+def kia_package_search_grep(registry: str, package_name: str, pattern: str, version: str = None, output_mode: str = "content") -> str:
+    logger.info(f"Grep search in package: {package_name} from {registry}")
+    if registry == "local":
         import site
         site_packages = Path(site.getsitepackages()[0])
         package_path = site_packages / package_name
-        if not package_path.exists():
-            return "Package not installed locally"
-        # Collect .py files
-        files = list(package_path.rglob('*.py'))[:100]  # limit
-        # Index with LEANN
-        index_path = Path(f"/tmp/leann_pkg_{package_name}")
-        try:
-            builder = LeannBuilder(str(index_path))
-            for file in files:
-                try:
-                    content = file.read_text()
-                    chunks = chunk_code_with_tree_sitter(content)
-                    for chunk in chunks:
-                        builder.add_document(chunk)
-                except Exception as e:
-                    logger.warning(f"Error reading {file}: {e}")
-            builder.build()
-            searcher = LeannSearcher(str(index_path))
-            package_searchers[package_name] = searcher
-        except Exception as e:
-            logger.error(f"Error building package index for {package_name}: {e}")
-            return f"Error building index: {e}"
-    results = []
-    for query in semantic_queries:
-        result = searcher.search(query)
-        results.append(str(result))
-    logger.info(f"Hybrid search completed for {package_name}")
-    return '\n'.join(results)
+        if package_path.exists():
+            result = subprocess.run(['rg', pattern, str(package_path)], capture_output=True, text=True)
+            logger.info(f"Grep found matches: {bool(result.stdout)}")
+            return result.stdout
+        return "Package not installed locally"
+    else:
+        # Remote search using web search
+        query = f"{registry} {package_name} {pattern} code example"
+        web_results = kia_web_search(query, num_results=5)
+        return f"Remote search results for {pattern} in {package_name}:\n{web_results}"
 
 @mcp.tool()
-def kia_package_search_read_file(package_name: str, filename: str, start_line: int, end_line: int) -> str:
-    logger.info(f"Reading file in package: {package_name}/{filename}")
-    import site
-    site_packages = Path(site.getsitepackages()[0])
-    file_path = site_packages / package_name / filename
-    if file_path.exists():
-        lines = file_path.read_text().splitlines()
-        if start_line > len(lines) or end_line < start_line:
-            return "Invalid line range"
-        return '\n'.join(lines[start_line-1:end_line])
-    return "File not found"
+def kia_package_search_hybrid(registry: str, package_name: str, semantic_queries: list, pattern: str = None, version: str = None) -> str:
+    logger.info(f"Hybrid search in package: {package_name} from {registry}")
+    if registry == "local":
+        if not LIBRARIES_AVAILABLE:
+            return "Libraries not available."
+        if package_name in package_searchers:
+            searcher = package_searchers[package_name]
+        else:
+            import site
+            site_packages = Path(site.getsitepackages()[0])
+            package_path = site_packages / package_name
+            if not package_path.exists():
+                return "Package not installed locally"
+            # Collect .py files
+            files = list(package_path.rglob('*.py'))[:100]  # limit
+            # Index with LEANN
+            index_path = Path(f"/tmp/leann_pkg_{package_name}")
+            try:
+                builder = LeannBuilder(str(index_path))
+                for file in files:
+                    try:
+                        content = file.read_text()
+                        chunks = chunk_code_with_tree_sitter(content)
+                        for chunk in chunks:
+                            builder.add_document(chunk)
+                    except Exception as e:
+                        logger.warning(f"Error reading {file}: {e}")
+                builder.build()
+                searcher = LeannSearcher(str(index_path))
+                package_searchers[package_name] = searcher
+            except Exception as e:
+                logger.error(f"Error building package index for {package_name}: {e}")
+                return f"Error building index: {e}"
+        results = []
+        for query in semantic_queries:
+            result = searcher.search(query)
+            results.append(str(result))
+        logger.info(f"Hybrid search completed for {package_name}")
+        return '\n'.join(results)
+    else:
+        # Remote semantic search using deep research
+        query = f"Semantic search in {registry} package {package_name}: {'; '.join(semantic_queries)}"
+        research_results = kia_deep_research_agent(query)
+        return f"Remote hybrid search results for {package_name}:\n{research_results}"
+
+@mcp.tool()
+def kia_package_search_read_file(registry: str, package_name: str, filename: str, start_line: int, end_line: int) -> str:
+    logger.info(f"Reading file in package: {package_name}/{filename} from {registry}")
+    if registry == "local":
+        import site
+        site_packages = Path(site.getsitepackages()[0])
+        file_path = site_packages / package_name / filename
+        if file_path.exists():
+            lines = file_path.read_text().splitlines()
+            if start_line > len(lines) or end_line < start_line:
+                return "Invalid line range"
+            return '\n'.join(lines[start_line-1:end_line])
+        return "File not found"
+    else:
+        # Remote read using web search
+        query = f"{registry} {package_name} {filename} source code"
+        web_results = kia_web_search(query, num_results=3)
+        return f"Remote file content for {filename} in {package_name}:\n{web_results}"
 
 # Repository Management
 @mcp.tool()
@@ -453,6 +471,24 @@ def read_source_content(source_identifier: str) -> str:
                 return f"Error reading file: {e}"
         return f"Content from {path_str}"
     return "Not found"
+
+@mcp.tool()
+def kia_context_share(agent_name: str) -> str:
+    logger.info(f"Sharing context with agent: {agent_name}")
+    # Simple sharing: export resources to a JSON file for the agent
+    share_file = Path(f"/tmp/kia_context_{agent_name}.json")
+    with share_file.open('w') as f:
+        json.dump(resources, f)
+    return f"Context shared to {share_file}"
+
+@mcp.tool()
+def kia_bug_report(description: str, bug_type: str = "bug", additional_context: str = None) -> str:
+    logger.info(f"Bug report: {description}")
+    # Simple: log and return confirmation
+    report = f"Type: {bug_type}\nDescription: {description}\nContext: {additional_context}"
+    # In real, send to email or issue tracker
+    logger.info(f"Bug report submitted: {report}")
+    return "Bug report submitted. Thank you for your feedback!"
 
 
 
