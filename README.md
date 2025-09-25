@@ -1,12 +1,12 @@
-# Alternative Nia Context MCP Server
+# Kia MCP Server
 
-A powerful, local alternative to Nia Context MCP server, built with FastMCP, cocoindex, LEANN, and Parallel.ai. Provides context augmentation for coding agents/IDEs with repository indexing, documentation search, package exploration, and web research capabilities.
+A powerful, local MCP server built with FastMCP, cocoindex, LEANN, and Parallel.ai. Provides context augmentation for coding agents/IDEs with repository indexing, documentation search, package exploration, and web research capabilities. Tech stack agnostic, supporting any programming language and framework.
 
 ## Features
 
-- **Repository Indexing**: Clone and index GitHub repos using cocoindex and LEANN for semantic search.
+- **Repository Indexing**: Clone and index GitHub repos using cocoindex with Tree Sitter for AST-based chunking and LEANN for semantic search.
 - **Documentation Search**: Index and query web documentation.
-- **Package Exploration**: Search installed Python packages with grep and semantic queries.
+- **Package Exploration**: Search installed packages with grep and semantic queries (supports Python and other languages).
 - **Web Research**: Perform web searches and deep research using Parallel.ai APIs.
 - **IDE Integration**: Effortless setup with Cursor, VS Code, Claude Code, and more.
 
@@ -15,53 +15,47 @@ A powerful, local alternative to Nia Context MCP server, built with FastMCP, coc
 ### Prerequisites
 
 - Python 3.9+
+- uv (Python package manager)
 - Rust toolchain (for cocoindex)
-- uv (for LEANN)
 - ripgrep (for package search)
 - Parallel.ai API key
 
 ### Installation
 
-1. **Install Rust**:
-   ```bash
-   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-   source ~/.cargo/env
-   pip install maturin
-   ```
+1. **Install prerequisites**:
+    - uv: `curl -LsSf https://astral.sh/uv/install.sh | sh`
+    - Rust: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh` (source ~/.cargo/env)
+    - ripgrep: `sudo apt install ripgrep` (Ubuntu/Debian) or `brew install ripgrep` (macOS)
 
-2. **Install uv**:
-   ```bash
-   curl -LsSf https://astral.sh/uv/install.sh | sh
-   ```
+2. **Install the server**:
+    ```bash
+    git clone https://github.com/your-repo/kia-mcp-server.git
+    cd kia-mcp-server
+    uv sync
+    ```
 
-3. **Install ripgrep**:
+   Or as a one-liner (after installing prerequisites):
    ```bash
-   # Ubuntu/Debian
-   sudo apt install ripgrep
-   # macOS
-   brew install ripgrep
-   ```
-
-4. **Install libraries**:
-   ```bash
-   pip install git+https://github.com/cocoindex-io/cocoindex.git
-   uv venv && source .venv/bin/activate && uv pip install leann
-   pip install -r requirements.txt
+   git clone https://github.com/your-repo/kia-mcp-server.git && cd kia-mcp-server && uv sync
    ```
 
 5. **Get API key**:
-   - Sign up at [Parallel.ai](https://platform.parallel.ai)
-   - Set environment variable: `export PARALLEL_API_KEY="your_key"`
+    - Sign up at [Parallel.ai](https://platform.parallel.ai) and set `export PARALLEL_API_KEY="your_key"`
 
 ## Running the Server
 
 ```bash
-python server.py
+uv run kia-mcp-server
+```
+
+Or directly:
+```bash
+uv run python server.py
 ```
 
 For development, use FastMCP CLI:
 ```bash
-fastmcp run server.py:mcp
+uv run fastmcp run server.py:mcp
 ```
 
 ## IDE Integration
@@ -97,9 +91,10 @@ For other clients, add to MCP config:
 ```json
 {
   "mcpServers": {
-    "alt-nia": {
-      "command": "python",
-      "args": ["/path/to/server.py"],
+    "kia": {
+      "command": "uv",
+      "args": ["run", "kia-mcp-server"],
+      "cwd": "/path/to/kia-mcp-server",
       "env": {
         "PARALLEL_API_KEY": "your_key"
       }
@@ -132,7 +127,7 @@ Research GraphRAG frameworks: kia_deep_research_agent("Compare best GraphRAG fra
 
 ### Package Search
 ```
-Grep for 'import' in requests: kia_package_search_grep("requests", "import")
+Grep for 'import' in a package: kia_package_search_grep("package_name", "pattern")
 ```
 
 ## Available Tools
@@ -161,15 +156,15 @@ Grep for 'import' in requests: kia_package_search_grep("requests", "import")
 ## Notes
 
 - Indexes stored in `/tmp` (temporary)
-- Requires cocoindex and LEANN for full functionality
-- Parallel.ai API has rate limits
+- Requires cocoindex, LEANN, and Tree Sitter for full functionality
+- Parallel.ai and Google AI APIs have rate limits
 - For production, deploy with FastMCP Cloud
 
 ## Troubleshooting
 
-- **Libraries not available**: Ensure cocoindex and LEANN are installed
+- **Libraries not available**: Run `uv sync` to install dependencies (ensure Rust for cocoindex and Tree Sitter parsers)
 - **API key errors**: Check PARALLEL_API_KEY is set
-- **Indexing fails**: Verify git and network access
+- **Indexing fails**: Verify git, network access, and API quotas
 - **IDE not connecting**: Restart IDE after adding server
 
 For issues, check logs or contact support.

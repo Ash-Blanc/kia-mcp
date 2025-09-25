@@ -3,3 +3,4 @@ cocoindex
 leann
 parallel-web
 requests
+google-generativeai

@@ -1,0 +1,25 @@
+[project]
+name = "kia-mcp-server"
+version = "0.1.0"
+description = "Kia MCP Server for tech stack agnostic context augmentation"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "fastmcp",
+    "cocoindex @ git+https://github.com/cocoindex-io/cocoindex.git",
+    "leann",
+    "parallel-web",
+    "requests",
+    "tree-sitter",
+    "tree-sitter-python",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+dev-dependencies = []
+
+[project.scripts]
+kia-mcp-server = "server:main"

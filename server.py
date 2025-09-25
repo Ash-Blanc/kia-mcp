@@ -6,6 +6,7 @@ import requests
 import time
 import ast
 from pathlib import Path
+from functools import lru_cache
 from fastmcp import FastMCP
 
 # Configure logging
@@ -13,17 +14,38 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 try:
-    from cocoindex import FlowBuilder
+    from cocoindex import FlowBuilder, Parser
     from leann import LeannBuilder, LeannSearcher
+    import tree_sitter_python as tspython
     LIBRARIES_AVAILABLE = True
-except ImportError:
+except ImportError as e:
     LIBRARIES_AVAILABLE = False
-    logger.warning("cocoindex and/or leann not available. Install as per README.")
+    logger.warning(f"Libraries not available: {e}. Install as per README.")
 
-mcp = FastMCP("alt-nia-mcp-server")
+instructions = """This server provides tools to enhance context for coding agents/IDEs. Key tools include:
+- kia_package_search_grep: Perform regex searches in installed packages.
+- kia_package_search_hybrid: Conduct semantic searches in packages using LEANN.
+- kia_package_search_read_file: Read specific sections of package files.
+- index_repository: Clone and index GitHub repositories for semantic search.
+- search_codebase: Query indexed repositories for relevant code snippets.
+- visualize_codebase: Generate import graphs for repositories.
+- index_documentation: Index web documentation for search.
+- search_documentation: Query indexed documentation.
+- list_resources: List all indexed resources.
+- check_resource_status: Check the status of a specific resource.
+- rename_resource: Rename an indexed resource.
+- delete_resource: Remove an indexed resource.
+- kia_web_search: Perform web searches via Parallel.ai.
+- kia_deep_research_agent: Conduct deep research tasks via Parallel.ai.
+- initialize_project: Set up MCP configurations for projects.
+- read_source_content: Read content from indexed sources.
+"""
+
+mcp = FastMCP("kia-mcp-server", instructions=instructions)
 
 # Globals
 searchers = {}
+package_searchers = {}
 resources = {}
 RESOURCES_FILE = Path('/tmp/resources.json')
 
@@ -40,8 +62,59 @@ def load_resources():
 
 load_resources()
 
+def chunk_text(text: str, chunk_size: int = 1000, overlap: int = 200) -> list[str]:
+    """Chunk text into smaller pieces with overlap."""
+    if len(text) <= chunk_size:
+        return [text]
+    chunks = []
+    start = 0
+    while start < len(text):
+        end = start + chunk_size
+        if end < len(text):
+            # Find a good break point (sentence end)
+            for i in range(end, max(start, end - 200), -1):
+                if text[i] in '.!?\n':
+                    end = i + 1
+                    break
+        chunk = text[start:end].strip()
+        if chunk:
+            chunks.append(chunk)
+        start = end - overlap
+    return chunks
+
+def chunk_code_with_tree_sitter(code: str) -> list[str]:
+    """Chunk Python code using Tree Sitter for AST-based splitting."""
+    try:
+        from tree_sitter import Parser
+        parser = Parser()
+        parser.set_language(tspython.language)
+        tree = parser.parse(bytes(code, 'utf-8'))
+        chunks = []
+
+        def extract_chunks(node):
+            if node.type in ['function_definition', 'class_definition']:
+                start = node.start_byte
+                end = node.end_byte
+                chunk = code[start:end]
+                if len(chunk) > 50:
+                    chunks.append(chunk)
+                return
+            for child in node.children:
+                extract_chunks(child)
+
+        extract_chunks(tree.root_node)
+        if not chunks:
+            return chunk_text(code)
+        return chunks
+    except Exception as e:
+        logger.warning(f"Tree Sitter parsing failed: {e}, falling back to text chunking")
+        return chunk_text(code)
+
+
+
 # Package Search Tools (local approximations)
 @mcp.tool()
+@lru_cache(maxsize=256)
 def kia_package_search_grep(package_name: str, pattern: str, version: str = None, output_mode: str = "content") -> str:
     logger.info(f"Grep search in package: {package_name}")
     import site
@@ -58,30 +131,40 @@ def kia_package_search_hybrid(package_name: str, semantic_queries: list, pattern
     logger.info(f"Hybrid search in package: {package_name}")
     if not LIBRARIES_AVAILABLE:
         return "Libraries not available."
-    import site
-    site_packages = Path(site.getsitepackages()[0])
-    package_path = site_packages / package_name
-    if package_path.exists():
+    if package_name in package_searchers:
+        searcher = package_searchers[package_name]
+    else:
+        import site
+        site_packages = Path(site.getsitepackages()[0])
+        package_path = site_packages / package_name
+        if not package_path.exists():
+            return "Package not installed locally"
         # Collect .py files
-        files = list(package_path.rglob('*.py'))[:50]  # limit
+        files = list(package_path.rglob('*.py'))[:100]  # limit
         # Index with LEANN
         index_path = Path(f"/tmp/leann_pkg_{package_name}")
-        builder = LeannBuilder(str(index_path))
-        for file in files:
-            try:
-                content = file.read_text()
-                builder.add_document(content)
-            except Exception as e:
-                logger.warning(f"Error reading {file}: {e}")
-        builder.build()
-        searcher = LeannSearcher(str(index_path))
-        results = []
-        for query in semantic_queries:
-            result = searcher.search(query)
-            results.append(str(result))
-        logger.info(f"Hybrid search completed for {package_name}")
-        return '\n'.join(results)
-    return "Package not installed locally"
+        try:
+            builder = LeannBuilder(str(index_path))
+            for file in files:
+                try:
+                    content = file.read_text()
+                    chunks = chunk_code_with_tree_sitter(content)
+                    for chunk in chunks:
+                        builder.add_document(chunk)
+                except Exception as e:
+                    logger.warning(f"Error reading {file}: {e}")
+            builder.build()
+            searcher = LeannSearcher(str(index_path))
+            package_searchers[package_name] = searcher
+        except Exception as e:
+            logger.error(f"Error building package index for {package_name}: {e}")
+            return f"Error building index: {e}"
+    results = []
+    for query in semantic_queries:
+        result = searcher.search(query)
+        results.append(str(result))
+    logger.info(f"Hybrid search completed for {package_name}")
+    return '\n'.join(results)
 
 @mcp.tool()
 def kia_package_search_read_file(package_name: str, filename: str, start_line: int, end_line: int) -> str:
@@ -112,22 +195,36 @@ def index_repository(repo_url: str, branch: str = "main") -> str:
     if result.returncode != 0:
         logger.error(f"Git clone failed: {result.stderr}")
         return f"Git clone failed: {result.stderr}"
-    # Use cocoindex to process
+    # Use cocoindex with Tree Sitter for parsing
+    python_parser = Parser.from_tree_sitter(
+        language=tspython.language,
+        captures={
+            "function": ["function_definition"],
+            "class": ["class_definition"],
+        },
+    )
     flow = FlowBuilder()
     flow.add_source("files", str(path))
-    flow.transform("chunk", lambda content: str(content).split('\n\n') if len(str(content)) > 1000 else [str(content)])
+    flow.parse("python", python_parser)
+    flow.transform("merge_chunks", lambda chunks: "\n".join(chunk["content"] for chunk in chunks) if isinstance(chunks, list) else str(chunks))
     chunks = flow.collect()
     # Build LEANN index
     index_path = Path(f"/tmp/leann_{repo_name}")
-    builder = LeannBuilder(str(index_path))
-    for chunk in chunks:
-        builder.add_document(str(chunk))
-    builder.build()
-    searchers[repo_name] = LeannSearcher(str(index_path))
-    resources[repo_name] = {'type': 'repository', 'path': str(path), 'status': 'indexed'}
-    save_resources()
-    logger.info(f"Indexed {repo_name}")
-    return f"Indexed {repo_name}"
+    try:
+        builder = LeannBuilder(str(index_path))
+        for chunk in chunks:
+            content = chunk.get("content", str(chunk))
+            if content.strip():
+                builder.add_document(content)
+        builder.build()
+        searchers[repo_name] = LeannSearcher(str(index_path))
+        resources[repo_name] = {'type': 'repository', 'path': str(path), 'status': 'indexed'}
+        save_resources()
+        logger.info(f"Indexed {repo_name}")
+        return f"Indexed {repo_name}"
+    except Exception as e:
+        logger.error(f"Error building index for {repo_name}: {e}")
+        return f"Error building index: {e}"
 
 @mcp.tool()
 def search_codebase(query: str, repositories: list, include_sources: bool = True) -> str:
@@ -181,19 +278,23 @@ def index_documentation(url: str, url_patterns: list = None, exclude_patterns: l
         response = requests.get(url, timeout=10)
         response.raise_for_status()
         content = response.text
-        # Simple chunking
-        chunks = [c for c in content.split('\n\n') if len(c.strip()) > 50][:1000]  # Filter and limit
+        # Improved chunking
+        chunks = chunk_text(content)
         doc_name = url.split('/')[-1] or 'doc'
         index_path = Path(f"/tmp/leann_{doc_name}")
-        builder = LeannBuilder(str(index_path))
-        for chunk in chunks:
-            builder.add_document(chunk)
-        builder.build()
-        searchers[doc_name] = LeannSearcher(str(index_path))
-        resources[doc_name] = {'type': 'documentation', 'url': url, 'status': 'indexed'}
-        save_resources()
-        logger.info(f"Indexed {doc_name}")
-        return f"Indexed {doc_name}"
+        try:
+            builder = LeannBuilder(str(index_path))
+            for chunk in chunks:
+                builder.add_document(chunk)
+            builder.build()
+            searchers[doc_name] = LeannSearcher(str(index_path))
+            resources[doc_name] = {'type': 'documentation', 'url': url, 'status': 'indexed'}
+            save_resources()
+            logger.info(f"Indexed {doc_name}")
+            return f"Indexed {doc_name}"
+        except Exception as e:
+            logger.error(f"Error building index for {doc_name}: {e}")
+            return f"Error building index: {e}"
     except Exception as e:
         logger.error(f"Error indexing {url}: {e}")
         return f"Error indexing {url}: {e}"
@@ -245,14 +346,17 @@ def rename_resource(identifier: str, new_name: str) -> str:
 def delete_resource(identifier: str) -> str:
     if identifier in resources:
         del resources[identifier]
-        if identifier in indexes:
-            del indexes[identifier]
+        if identifier in searchers:
+            del searchers[identifier]
+        if identifier in package_searchers:
+            del package_searchers[identifier]
         save_resources()
         return f"Deleted {identifier}"
     return "Not found"
 
 # Web Search & Research (using Parallel.ai)
 @mcp.tool()
+@lru_cache(maxsize=128)
 def kia_web_search(query: str, num_results: int = 5, category: str = None, days_back: int = None) -> str:
     logger.info(f"Web search: {query}")
     parallel_key = os.getenv("PARALLEL_API_KEY")
@@ -267,7 +371,10 @@ def kia_web_search(query: str, num_results: int = 5, category: str = None, days_
         response.raise_for_status()
         results = response.json().get("results", [])
         logger.info(f"Found {len(results)} results")
-        return str([{"url": r["url"], "title": r["title"], "excerpts": r["excerpts"][:3]} for r in results])
+        formatted = []
+        for r in results:
+            formatted.append(f"Title: {r.get('title', 'N/A')}\nURL: {r.get('url', 'N/A')}\nExcerpts: {'; '.join(r.get('excerpts', [])[:3])}\n")
+        return '\n'.join(formatted)
     except Exception as e:
         logger.error(f"Web search error: {e}")
         return f"Error: {e}"
@@ -292,7 +399,7 @@ def kia_deep_research_agent(query: str, output_format: str = None) -> str:
         run_id = response.json()["run_id"]
         logger.info(f"Started task {run_id}")
         result_url = f"https://api.parallel.ai/v1/tasks/runs/{run_id}/result"
-        for i in range(60):  # wait up to 60s
+        for i in range(30):  # wait up to 60s
             res = requests.get(result_url, headers=headers, timeout=10)
             if res.status_code == 200:
                 output = res.json().get("output", {}).get("content", "")
@@ -311,7 +418,7 @@ def initialize_project(project_root: str, profiles: list = None) -> str:
     logger.info(f"Initializing project: {project_root}")
     config = {
         "mcpServers": {
-            "alt-nia": {
+            "kia": {
                 "command": "python",
                 "args": ["server.py"],
                 "env": {}
@@ -333,6 +440,7 @@ def initialize_project(project_root: str, profiles: list = None) -> str:
     return f"Initialized project at {project_root}"
 
 @mcp.tool()
+@lru_cache(maxsize=64)
 def read_source_content(source_identifier: str) -> str:
     logger.info(f"Reading source: {source_identifier}")
     if source_identifier in resources:
@@ -353,5 +461,8 @@ def get_server_status() -> str:
     logger.info("Getting server status")
     return f"Indexed resources: {len(resources)}, Libraries available: {LIBRARIES_AVAILABLE}"
 
-if __name__ == "__main__":
+def main():
     mcp.run()
+
+if __name__ == "__main__":
+    main()
