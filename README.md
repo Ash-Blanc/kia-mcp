@@ -34,8 +34,6 @@ Improves agent performance by up to 27% through semantic search and Tree Sitter-
 ### Prerequisites
 
 - Python 3.9+
-- uv (Python package manager)
-- GitHub CLI (gh) for bug reporting (optional, install via `sudo apt install gh` on Linux)
 
 ### Installation
 
@@ -48,23 +46,23 @@ Improves agent performance by up to 27% through semantic search and Tree Sitter-
      ```bash
      git clone https://github.com/Ash-Blanc/kia-mcp.git
      cd kia-mcp
-     uv sync
+     uvx --from pyproject.toml sync
      ```
 
     Or as a one-liner (after installing prerequisites):
     ```bash
-    git clone https://github.com/Ash-Blanc/kia-mcp.git && cd kia-mcp && uv sync
+    git clone https://github.com/Ash-Blanc/kia-mcp.git && cd kia-mcp && uvx --from pyproject.toml sync
     ```
 
 ## Running the Server
 
 ```bash
-uv run kia-mcp
+uvx --from pyproject.toml run kia-mcp
 ```
 
 Or directly:
 ```bash
-uv run python server.py
+uvx --from pyproject.toml run python server.py
 ```
 
 ## IDE Integration
@@ -101,12 +99,10 @@ For other clients, add to MCP config:
 {
   "mcpServers": {
     "kia": {
-      "command": "uv",
-      "args": ["run", "kia-mcp"],
+      "command": "uvx",
+      "args": ["--from", "/path/to/kia-mcp/pyproject.toml", "run", "kia-mcp"],
       "cwd": "/path/to/kia-mcp",
-      "env": {
-        "PARALLEL_API_KEY": "your_key"
-      }
+      "env": {}
     }
   }
 }
@@ -178,10 +174,9 @@ Report an issue: kia_bug_report("Indexing fails for large repos", "bug", "Error:
 
 ## Troubleshooting
 
-- **Dependencies not available**: Run `uv sync` to install dependencies
+- **Dependencies not available**: Run `uvx --from pyproject.toml sync` to install dependencies
 - **Indexing fails**: Verify git and network access
 - **IDE not connecting**: Restart IDE after adding server
-- **Bug reporting fails**: Ensure GitHub CLI (gh) is installed and authenticated with `gh auth login`
 - **Package search errors**: For remote searches, ensure network access; for local, install packages via pip/npm
 
 For issues, check logs or submit a bug report using the kia_bug_report tool.
