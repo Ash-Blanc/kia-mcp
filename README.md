@@ -2,6 +2,8 @@
 
 A powerful, local MCP server built with FastMCP, cocoindex, LEANN, and Parallel.ai. Provides context augmentation for coding agents/IDEs with repository indexing, documentation search, package exploration, and web research capabilities. Tech stack agnostic, supporting any programming language and framework.
 
+[GitHub Repository](https://github.com/Ash-Blanc/mcp-codebase-server)
+
 Tell your coding agent: "Use kia_package_search_grep to find how error handling is implemented in the `requests` Python library" or "Search the numpy package for array manipulation examples".
 
 Try indexing public documentation or a repository:
@@ -18,13 +20,14 @@ Improves agent performance by up to 27% through semantic search and Tree Sitter-
 ## Features
 
 - **Repository Indexing**: Clone and index GitHub repos using cocoindex with Tree Sitter for AST-based chunking and LEANN for semantic search.
-- **Documentation Search**: Index and query web documentation.
-- **Package Exploration**: Search local or remote packages (PyPI, NPM, etc.) with grep, semantic queries, and file reading.
-- **Web Research**: Perform web searches and deep research using Parallel.ai APIs.
+- **Documentation Search**: Index and query web documentation for quick access.
+- **Package Exploration**: Search local or remote packages (PyPI, NPM, Crates.io, Go modules) with regex, semantic queries, and file reading – no indexing needed for remote packages.
+- **Web Research**: Perform web searches and deep multi-step research using Parallel.ai APIs.
 - **Codebase Visualization**: Generate import graphs and share context across agents.
-- **IDE Integration**: Effortless setup with Cursor, VS Code, Claude Code, and more.
+- **IDE Integration**: Seamless setup with Cursor, VS Code, Claude Code, and more.
 - **Performance**: Improves coding agent productivity by up to 27% through efficient semantic search and local indexing.
 - **Free & Open-Source**: No subscription required, enhanced privacy with local processing.
+- **Bug Reporting**: Submit issues directly to the GitHub repo for quick feedback.
 
 ## Quick Setup
 
@@ -44,17 +47,17 @@ Improves agent performance by up to 27% through semantic search and Tree Sitter-
     - Rust: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh` (source ~/.cargo/env)
     - ripgrep: `sudo apt install ripgrep` (Ubuntu/Debian) or `brew install ripgrep` (macOS)
 
-2. **Install the server**:
-    ```bash
-    git clone https://github.com/your-repo/kia-mcp-server.git
-    cd kia-mcp-server
-    uv sync
-    ```
+ 2. **Install the server**:
+     ```bash
+     git clone https://github.com/Ash-Blanc/mcp-codebase-server.git
+     cd mcp-codebase-server
+     uv sync
+     ```
 
-   Or as a one-liner (after installing prerequisites):
-   ```bash
-   git clone https://github.com/your-repo/kia-mcp-server.git && cd kia-mcp-server && uv sync
-   ```
+    Or as a one-liner (after installing prerequisites):
+    ```bash
+    git clone https://github.com/Ash-Blanc/mcp-codebase-server.git && cd mcp-codebase-server && uv sync
+    ```
 
 5. **Get API key**:
     - Sign up at [Parallel.ai](https://platform.parallel.ai) and set `export PARALLEL_API_KEY="your_key"`
@@ -144,27 +147,9 @@ Check the status of your indexing jobs: check_resource_status("repository", "bro
 
 ### Demo: Analyze a Framework
 ```python
-async def demo_kia_agent():
-    """
-    Demo: Analyze a popular framework and find best practices.
-    """
-    agent, client = await create_code_assistant()
-
-    # Create a session
-    response = await client.agents.complete(
-        agent=agent,
-        messages=[{
-            "role": "user",
-            "content": """I'm building a React app with authentication. 
-            Please:
-            1. Index the NextAuth.js repository
-            2. Search for JWT implementation patterns
-            3. Find documentation about session management
-            4. Show me similar auth patterns from other popular repos"""
-        }]
-    )
-
-    print(response.messages[-1].content)
+# Example integration with a coding agent (e.g., Cursor or Claude Code)
+# Tell your agent: "Index the NextAuth.js repository, search for JWT patterns, find session docs, and show auth patterns from other repos."
+# The agent will use Kia's tools automatically.
 ```
 
 ### Submit Bug Report
@@ -210,5 +195,7 @@ Report an issue: kia_bug_report("Indexing fails for large repos", "bug", "Error:
 - **API key errors**: Check PARALLEL_API_KEY is set
 - **Indexing fails**: Verify git, network access, and API quotas
 - **IDE not connecting**: Restart IDE after adding server
+- **Bug reporting fails**: Ensure GitHub CLI (gh) is installed and authenticated with `gh auth login`
+- **Package search errors**: For remote searches, ensure network access; for local, install packages via pip/npm
 
-For issues, check logs or contact support.
+For issues, check logs or submit a bug report using the kia_bug_report tool.
