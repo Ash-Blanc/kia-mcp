@@ -1,6 +1,6 @@
 # Kia MCP Server
 
-A powerful, local MCP server built with FastMCP, cocoindex, LEANN, and Parallel.ai. Provides context augmentation for coding agents/IDEs with repository indexing, documentation search, package exploration, and web research capabilities. Tech stack agnostic, supporting any programming language and framework.
+A powerful, local MCP server for context augmentation in coding agents/IDEs. Provides repository indexing, documentation search, package exploration, and web research capabilities. Tech stack agnostic, supporting any programming language and framework.
 
 [GitHub Repository](https://github.com/Ash-Blanc/kia-mcp)
 
@@ -19,10 +19,10 @@ Improves agent performance by up to 27% through semantic search and Tree Sitter-
 
 ## Features
 
-- **Repository Indexing**: Clone and index GitHub repos using cocoindex with Tree Sitter for AST-based chunking and LEANN for semantic search.
+- **Repository Indexing**: Clone and index GitHub repos for semantic search.
 - **Documentation Search**: Index and query web documentation for quick access.
 - **Package Exploration**: Search local or remote packages (PyPI, NPM, Crates.io, Go modules) with regex, semantic queries, and file reading – no indexing needed for remote packages.
-- **Web Research**: Perform web searches and deep multi-step research using Parallel.ai APIs.
+- **Web Research**: Perform web searches and deep multi-step research.
 - **Codebase Visualization**: Generate import graphs and share context across agents.
 - **IDE Integration**: Seamless setup with Cursor, VS Code, Claude Code, and more.
 - **Performance**: Improves coding agent productivity by up to 27% through efficient semantic search and local indexing.
@@ -35,10 +35,7 @@ Improves agent performance by up to 27% through semantic search and Tree Sitter-
 
 - Python 3.9+
 - uv (Python package manager)
-- Rust toolchain (for cocoindex)
-- ripgrep (for package search)
 - GitHub CLI (gh) for bug reporting (optional, install via `sudo apt install gh` on Linux)
-- Parallel.ai API key
 
 ### Installation
 
@@ -59,9 +56,6 @@ Improves agent performance by up to 27% through semantic search and Tree Sitter-
     git clone https://github.com/Ash-Blanc/kia-mcp.git && cd kia-mcp && uv sync
     ```
 
-5. **Get API key**:
-    - Sign up at [Parallel.ai](https://platform.parallel.ai) and set `export PARALLEL_API_KEY="your_key"`
-
 ## Running the Server
 
 ```bash
@@ -71,11 +65,6 @@ uv run kia-mcp
 Or directly:
 ```bash
 uv run python server.py
-```
-
-For development, use FastMCP CLI:
-```bash
-uv run fastmcp run server.py:mcp
 ```
 
 ## IDE Integration
@@ -185,15 +174,12 @@ Report an issue: kia_bug_report("Indexing fails for large repos", "bug", "Error:
 ## Notes
 
 - Indexes stored in `/tmp` (temporary)
-- Requires cocoindex, LEANN, and Tree Sitter for full functionality
-- Parallel.ai and Google AI APIs have rate limits
 - For production, deploy with FastMCP Cloud
 
 ## Troubleshooting
 
-- **Libraries not available**: Run `uv sync` to install dependencies (ensure Rust for cocoindex and Tree Sitter parsers)
-- **API key errors**: Check PARALLEL_API_KEY is set
-- **Indexing fails**: Verify git, network access, and API quotas
+- **Dependencies not available**: Run `uv sync` to install dependencies
+- **Indexing fails**: Verify git and network access
 - **IDE not connecting**: Restart IDE after adding server
 - **Bug reporting fails**: Ensure GitHub CLI (gh) is installed and authenticated with `gh auth login`
 - **Package search errors**: For remote searches, ensure network access; for local, install packages via pip/npm

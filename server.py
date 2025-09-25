@@ -24,7 +24,7 @@ except ImportError as e:
 
 instructions = """This server provides tools to enhance context for coding agents/IDEs. Key tools include:
 - kia_package_search_grep: Perform regex searches in packages (local or remote registries like py_pi, npm).
-- kia_package_search_hybrid: Conduct semantic searches in packages using LEANN or remote research.
+- kia_package_search_hybrid: Conduct semantic searches in packages or remote research.
 - kia_package_search_read_file: Read specific sections of package files (local or remote).
 - index_repository: Clone and index GitHub repositories for semantic search.
 - search_codebase: Query indexed repositories for relevant code snippets.
@@ -35,8 +35,8 @@ instructions = """This server provides tools to enhance context for coding agent
 - check_resource_status: Check the status of a specific resource.
 - rename_resource: Rename an indexed resource.
 - delete_resource: Remove an indexed resource.
-- kia_web_search: Perform web searches via Parallel.ai.
-- kia_deep_research_agent: Conduct deep research tasks via Parallel.ai.
+- kia_web_search: Perform web searches.
+- kia_deep_research_agent: Conduct deep research tasks.
 - initialize_project: Set up MCP configurations for projects.
 - read_source_content: Read content from indexed sources.
 - kia_context_share: Share context across agents.
