@@ -43,7 +43,7 @@ instructions = """This server provides tools to enhance context for coding agent
 - kia_bug_report: Submit bug reports or feedback by opening a GitHub issue.
 """
 
-mcp = FastMCP("kia-mcp-server", instructions=instructions)
+mcp = FastMCP("kia-mcp", instructions=instructions)
 
 # Globals
 searchers = {}

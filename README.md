@@ -2,7 +2,7 @@
 
 A powerful, local MCP server built with FastMCP, cocoindex, LEANN, and Parallel.ai. Provides context augmentation for coding agents/IDEs with repository indexing, documentation search, package exploration, and web research capabilities. Tech stack agnostic, supporting any programming language and framework.
 
-[GitHub Repository](https://github.com/Ash-Blanc/mcp-codebase-server)
+[GitHub Repository](https://github.com/Ash-Blanc/kia-mcp-server)
 
 Tell your coding agent: "Use kia_package_search_grep to find how error handling is implemented in the `requests` Python library" or "Search the numpy package for array manipulation examples".
 
@@ -49,14 +49,14 @@ Improves agent performance by up to 27% through semantic search and Tree Sitter-
 
  2. **Install the server**:
      ```bash
-     git clone https://github.com/Ash-Blanc/mcp-codebase-server.git
-     cd mcp-codebase-server
+     git clone https://github.com/Ash-Blanc/kia-mcp-server.git
+     cd kia-mcp-server
      uv sync
      ```
 
     Or as a one-liner (after installing prerequisites):
     ```bash
-    git clone https://github.com/Ash-Blanc/mcp-codebase-server.git && cd mcp-codebase-server && uv sync
+    git clone https://github.com/Ash-Blanc/kia-mcp-server.git && cd kia-mcp-server && uv sync
     ```
 
 5. **Get API key**:
@@ -65,7 +65,7 @@ Improves agent performance by up to 27% through semantic search and Tree Sitter-
 ## Running the Server
 
 ```bash
-uv run kia-mcp-server
+uv run kia-mcp
 ```
 
 Or directly:
@@ -113,7 +113,7 @@ For other clients, add to MCP config:
   "mcpServers": {
     "kia": {
       "command": "uv",
-      "args": ["run", "kia-mcp-server"],
+      "args": ["run", "kia-mcp"],
       "cwd": "/path/to/kia-mcp-server",
       "env": {
         "PARALLEL_API_KEY": "your_key"
