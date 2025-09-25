@@ -39,6 +39,8 @@ instructions = """This server provides tools to enhance context for coding agent
 - kia_deep_research_agent: Conduct deep research tasks via Parallel.ai.
 - initialize_project: Set up MCP configurations for projects.
 - read_source_content: Read content from indexed sources.
+- kia_context_share: Share context across agents.
+- kia_bug_report: Submit bug reports or feedback by opening a GitHub issue.
 """
 
 mcp = FastMCP("kia-mcp-server", instructions=instructions)
@@ -484,11 +486,44 @@ def kia_context_share(agent_name: str) -> str:
 @mcp.tool()
 def kia_bug_report(description: str, bug_type: str = "bug", additional_context: str = None) -> str:
     logger.info(f"Bug report: {description}")
-    # Simple: log and return confirmation
-    report = f"Type: {bug_type}\nDescription: {description}\nContext: {additional_context}"
-    # In real, send to email or issue tracker
-    logger.info(f"Bug report submitted: {report}")
-    return "Bug report submitted. Thank you for your feedback!"
+    if not description.strip() or len(description) < 10 or len(description) > 5000:
+        return "Description must be 10-5000 characters."
+    if bug_type not in ["bug", "feature-request", "improvement", "other"]:
+        return "Invalid bug_type. Use 'bug', 'feature-request', 'improvement', or 'other'."
+    
+    title = f"[{bug_type.upper()}] {description[:50]}..."
+    body = f"**Type:** {bug_type}\n\n**Description:** {description}\n\n**Additional Context:** {additional_context or 'None'}"
+    
+    # Check if gh is installed
+    try:
+        result = subprocess.run(['gh', '--version'], capture_output=True, text=True, timeout=5)
+        if result.returncode != 0:
+            logger.error("GitHub CLI not installed")
+            return "GitHub CLI not installed. Please install it to submit issues."
+    except Exception as e:
+        logger.error(f"Error checking gh: {e}")
+        return "Error checking GitHub CLI."
+    
+    # Create issue using gh api
+    data = {
+        "title": title,
+        "body": body,
+        "labels": [bug_type]
+    }
+    try:
+        cmd = ['gh', 'api', 'repos/Ash-Blanc/mcp-codebase-server/issues', '--method', 'POST', '--input', '-']
+        result = subprocess.run(cmd, input=json.dumps(data), text=True, capture_output=True, timeout=30)
+        if result.returncode == 0:
+            response = json.loads(result.stdout)
+            issue_url = response.get('html_url', 'N/A')
+            logger.info(f"Issue created: {issue_url}")
+            return f"Bug report submitted as GitHub issue: {issue_url}"
+        else:
+            logger.error(f"Failed to create issue: {result.stderr}")
+            return f"Failed to create issue: {result.stderr}"
+    except Exception as e:
+        logger.error(f"Error creating issue: {e}")
+        return f"Error creating issue: {e}"
 
 
 

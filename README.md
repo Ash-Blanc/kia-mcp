@@ -2,7 +2,18 @@
 
 A powerful, local MCP server built with FastMCP, cocoindex, LEANN, and Parallel.ai. Provides context augmentation for coding agents/IDEs with repository indexing, documentation search, package exploration, and web research capabilities. Tech stack agnostic, supporting any programming language and framework.
 
-**Alternative to Nia MCP**: Kia offers similar context-augmentation features with enhanced privacy – all indexing and searches run locally, no code sent to external servers. Improves agent performance by up to 27% through semantic search and Tree Sitter-powered chunking.
+Tell your coding agent: "Use kia_package_search_grep to find how error handling is implemented in the `requests` Python library" or "Search the numpy package for array manipulation examples".
+
+Try indexing public documentation or a repository:
+- "Index [https://docs.python.org/3/]"
+- "Index [https://github.com/browser-use/browser-use]"
+- "Use kia_deep_research_agent to compare the best GraphRAG frameworks and then index the one with least latency."
+
+Check your indexed resources:
+- "List my resources" or "Check the status of my indexing jobs"
+- Visit your local setup to see all your indexed content.
+
+Improves agent performance by up to 27% through semantic search and Tree Sitter-powered chunking.
 
 ## Features
 
@@ -23,6 +34,7 @@ A powerful, local MCP server built with FastMCP, cocoindex, LEANN, and Parallel.
 - uv (Python package manager)
 - Rust toolchain (for cocoindex)
 - ripgrep (for package search)
+- GitHub CLI (gh) for bug reporting (optional, install via `sudo apt install gh` on Linux)
 - Parallel.ai API key
 
 ### Installation
@@ -110,29 +122,54 @@ For other clients, add to MCP config:
 
 ## Usage Examples
 
-### Index a Repository
+### Package Search (No indexing required!)
 ```
-Index the FastAPI repo: index_repository("https://github.com/tiangolo/fastapi")
-```
-
-### Search Codebase
-```
-Find error handling in FastAPI: search_codebase("error handling", ["fastapi"])
+Use package search to find how error handling is implemented in the `requests` Python library: kia_package_search_grep("py_pi", "requests", "error handling")
+Search the numpy package for array manipulation examples: kia_package_search_hybrid("py_pi", "numpy", ["array manipulation"])
+Read specific file sections: kia_package_search_read_file("py_pi", "requests", "requests.py", 1, 50)
 ```
 
-### Web Search
+### Index Documentation or a Repository
 ```
-Search for Python async best practices: kia_web_search("Python async best practices")
-```
-
-### Deep Research
-```
-Research GraphRAG frameworks: kia_deep_research_agent("Compare best GraphRAG frameworks")
+Index public documentation: index_documentation("https://docs.python.org/3/")
+Index a GitHub repository: index_repository("https://github.com/browser-use/browser-use")
+Use deep research to compare frameworks: kia_deep_research_agent("Compare best GraphRAG frameworks and index the one with least latency")
 ```
 
-### Package Search
+### Monitor Progress & Explore
 ```
-Grep for 'import' in a package: kia_package_search_grep("package_name", "pattern")
+List your resources: list_resources()
+Check the status of your indexing jobs: check_resource_status("repository", "browser-use")
+```
+
+### Demo: Analyze a Framework
+```python
+async def demo_kia_agent():
+    """
+    Demo: Analyze a popular framework and find best practices.
+    """
+    agent, client = await create_code_assistant()
+
+    # Create a session
+    response = await client.agents.complete(
+        agent=agent,
+        messages=[{
+            "role": "user",
+            "content": """I'm building a React app with authentication. 
+            Please:
+            1. Index the NextAuth.js repository
+            2. Search for JWT implementation patterns
+            3. Find documentation about session management
+            4. Show me similar auth patterns from other popular repos"""
+        }]
+    )
+
+    print(response.messages[-1].content)
+```
+
+### Submit Bug Report
+```
+Report an issue: kia_bug_report("Indexing fails for large repos", "bug", "Error: timeout after 10 minutes")
 ```
 
 ## Available Tools
@@ -154,7 +191,7 @@ Grep for 'import' in a package: kia_package_search_grep("package_name", "pattern
 - **initialize_project**: Setup IDE configs
 - **read_source_content**: Read indexed content
 - **kia_context_share**: Share context across agents
-- **kia_bug_report**: Submit feedback and bug reports
+- **kia_bug_report**: Submit bug reports or feedback by opening a GitHub issue
 
 ## Resources
 
