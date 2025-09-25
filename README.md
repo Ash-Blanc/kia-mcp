@@ -34,6 +34,7 @@ Improves agent performance by up to 27% through semantic search and Tree Sitter-
 ### Prerequisites
 
 - Python 3.9+
+- Parallel.ai API key (sign up at [Parallel.ai](https://platform.parallel.ai))
 
 ### Installation
 
@@ -53,6 +54,9 @@ Improves agent performance by up to 27% through semantic search and Tree Sitter-
     ```bash
     git clone https://github.com/Ash-Blanc/kia-mcp.git && cd kia-mcp && uvx --from pyproject.toml sync
     ```
+
+ 3. **Get API key**:
+     - Sign up at [Parallel.ai](https://platform.parallel.ai) and set `export PARALLEL_API_KEY="your_key"`
 
 ## Running the Server
 
@@ -102,7 +106,9 @@ For other clients, add to MCP config:
       "command": "uvx",
       "args": ["--from", "/path/to/kia-mcp/pyproject.toml", "run", "kia-mcp"],
       "cwd": "/path/to/kia-mcp",
-      "env": {}
+      "env": {
+        "PARALLEL_API_KEY": "your_key"
+      }
     }
   }
 }
@@ -175,6 +181,7 @@ Report an issue: kia_bug_report("Indexing fails for large repos", "bug", "Error:
 ## Troubleshooting
 
 - **Dependencies not available**: Run `uvx --from pyproject.toml sync` to install dependencies
+- **API key errors**: Check PARALLEL_API_KEY is set
 - **Indexing fails**: Verify git and network access
 - **IDE not connecting**: Restart IDE after adding server
 - **Package search errors**: For remote searches, ensure network access; for local, install packages via pip/npm
